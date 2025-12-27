@@ -28,50 +28,130 @@
       </div>
     </div>
 
-    <!-- 搜索区域 - 固定 -->
+    <!-- 搜索筛选区域 -->
     <div class="search-section">
       <div class="search-bar">
-        <van-icon name="search" class="search-icon" />
-        <input 
-          v-model="searchKeyword" 
-          type="text" 
+        <van-search
+          v-model="searchKeyword"
           placeholder="搜索订单标题、地区、年级、科目..."
-          class="search-input"
+          shape="round"
+          background="transparent"
           @input="onSearchChange"
-        />
-        <van-icon 
-          v-if="searchKeyword" 
-          name="clear" 
-          class="clear-icon" 
-          @click="clearSearch" 
+          @clear="clearSearchInput"
         />
       </div>
-      <div class="filter-row">
-        <div class="filter-left">
-          <select v-model="statusFilter" class="status-filter" @change="onFilterChange">
-            <option value="">全部状态</option>
-            <option value="active">上架中</option>
-            <option value="inactive">已下架</option>
-          </select>
-          <input 
-            type="date" 
-            v-model="dateFrom" 
-            class="date-filter"
-            @change="onFilterChange"
-            placeholder="开始日期"
-          />
-          <span class="date-separator">至</span>
-          <input 
-            type="date" 
-            v-model="dateTo" 
-            class="date-filter"
-            @change="onFilterChange"
-            placeholder="结束日期"
-          />
+      
+      <!-- 横向滚动筛选栏 -->
+      <div class="filter-tabs-wrapper">
+        <div class="filter-tabs">
+          <div 
+            class="filter-tab"
+            :class="{ active: statusFilter }"
+            @click="openFilterSheet('status')"
+          >
+            <span>{{ statusFilterLabel }}</span>
+            <van-icon name="arrow-down" size="10" />
+          </div>
+          
+          <div 
+            class="filter-tab"
+            :class="{ active: districtFilter }"
+            @click="openFilterSheet('district')"
+          >
+            <span>{{ districtFilterLabel }}</span>
+            <van-icon name="arrow-down" size="10" />
+          </div>
+          
+          <div 
+            class="filter-tab"
+            :class="{ active: gradeCategoryFilter }"
+            @click="openFilterSheet('gradeCategory')"
+          >
+            <span>{{ gradeCategoryFilterLabel }}</span>
+            <van-icon name="arrow-down" size="10" />
+          </div>
+          
+          <div 
+            class="filter-tab"
+            :class="{ active: gradeFilter }"
+            @click="openFilterSheet('grade')"
+          >
+            <span>{{ gradeFilterLabel }}</span>
+            <van-icon name="arrow-down" size="10" />
+          </div>
+          
+          <div 
+            class="filter-tab"
+            :class="{ active: subjectFilter }"
+            @click="openFilterSheet('subject')"
+          >
+            <span>{{ subjectFilterLabel }}</span>
+            <van-icon name="arrow-down" size="10" />
+          </div>
+          
+          <div 
+            class="filter-tab"
+            :class="{ active: teacherTypeFilter }"
+            @click="openFilterSheet('teacherType')"
+          >
+            <span>{{ teacherTypeFilterLabel }}</span>
+            <van-icon name="arrow-down" size="10" />
+          </div>
+          
+          <div 
+            class="filter-tab date-tab"
+            :class="{ active: dateRange && dateRange.length > 0 }"
+            @click="showDatePicker = true"
+          >
+            <van-icon name="calendar-o" size="14" />
+            <span>{{ dateRangeLabel || '日期' }}</span>
+          </div>
         </div>
-        <span class="filter-result">找到 {{ filteredOrders.length }} 个订单</span>
+        
+        <!-- 筛选结果 & 重置 -->
+        <div class="filter-footer" v-if="hasActiveFilters">
+          <span class="filter-result">
+            <van-icon name="records-o" />
+            找到 <strong>{{ filteredOrders.length }}</strong> 个订单
+          </span>
+          <button class="reset-btn" @click="clearAllFilters">
+            <van-icon name="replay" />
+            重置
+          </button>
+        </div>
       </div>
     </div>
+    
+    <!-- 筛选选择器 -->
+    <van-action-sheet 
+      v-model:show="showFilterSheet" 
+      :title="filterSheetTitle"
+    >
+      <div class="picker-content">
+        <div 
+          v-for="item in filterSheetOptions" 
+          :key="item.value"
+          class="picker-item"
+          :class="{ active: isFilterSelected(item.value) }"
+          @click="onSelectFilter(item)"
+        >
+          <span>{{ item.label }}</span>
+          <van-icon v-if="isFilterSelected(item.value)" name="success" class="check-icon" />
+        </div>
+      </div>
+    </van-action-sheet>
+    
+    <!-- 日期范围选择器 -->
+    <van-calendar 
+      v-model:show="showDatePicker"
+      type="range"
+      :min-date="minDate"
+      :max-date="maxDate"
+      @confirm="onDateConfirm"
+      title="选择日期范围"
+      confirm-text="确定"
+      confirm-disabled-text="请选择日期范围"
+    />
 
     <!-- 订单列表 -->
     <div class="order-list">
@@ -132,22 +212,29 @@
         </div>
 
         <!-- 更多信息 -->
-        <div class="extra-info" v-if="order.address || order.frequency || order.teacherType">
-          <div class="extra-item" v-if="order.address">
+        <div class="extra-info">
+          <div class="extra-item">
             <span class="extra-label">地址：</span>
-            <span class="extra-value">{{ order.address }}</span>
+            <span class="extra-value">{{ order.address || '-' }}</span>
           </div>
-          <div class="extra-item" v-if="order.frequency">
+          <div class="extra-item">
+            <span class="extra-label">学校：</span>
+            <span class="extra-value">{{ order.school || '-' }}</span>
+          </div>
+          <div class="extra-item">
             <span class="extra-label">频率：</span>
-            <span class="extra-value">{{ order.frequency }}</span>
+            <span class="extra-value">{{ order.frequency || '-' }}</span>
           </div>
-          <div class="extra-item" v-if="order.teacherType">
+          <div class="extra-item">
             <span class="extra-label">要求：</span>
-            <span class="extra-value">{{ order.teacherType }}</span>
+            <span class="extra-value">{{ order.teacherType || '-' }}</span>
           </div>
-          <div class="extra-item" v-if="order.availableTimes && order.availableTimes.length">
+          <div class="extra-item">
             <span class="extra-label">时间：</span>
-            <span class="extra-value">{{ order.availableTimes.join('、') }}</span>
+            <span class="extra-value">{{ 
+              order.availableTimesText || 
+              (order.availableTimes && order.availableTimes.length > 0 ? order.availableTimes.join('、') : '-') 
+            }}</span>
           </div>
         </div>
 
@@ -156,7 +243,6 @@
           <van-icon name="phone-o" />
           <span class="contact-number">{{ order.contact }}</span>
           <button class="copy-btn" @click="copyContact(order.contact)">
-            <van-icon name="records-o" />
             复制
           </button>
         </div>
@@ -232,7 +318,72 @@
       <div class="modal-content">
         <h2 class="modal-title">{{ isEdit ? '编辑订单' : '新增订单' }}</h2>
         
-        <div class="form-scroll">
+        <!-- 新增模式选择 -->
+        <div class="mode-selector" v-if="!isEdit">
+          <div 
+            class="mode-tab"
+            :class="{ active: fillMode === 'quick' }"
+            @click="fillMode = 'quick'"
+          >
+            <van-icon name="flash" />
+            <span>快速填入</span>
+          </div>
+          <div 
+            class="mode-tab"
+            :class="{ active: fillMode === 'manual' }"
+            @click="fillMode = 'manual'"
+          >
+            <van-icon name="edit" />
+            <span>逐项填入</span>
+          </div>
+        </div>
+        
+        <!-- 快速填入模式 -->
+        <div class="quick-fill-mode" v-if="!isEdit && fillMode === 'quick'">
+          <div class="quick-fill-hint">
+            <van-icon name="info-o" />
+            <span>粘贴订单文本，一键解析填充所有信息</span>
+          </div>
+          
+          <!-- 模板参考 -->
+          <div class="template-reference">
+            <div class="template-header">
+              <span class="template-title">📋 参考模板</span>
+              <button class="copy-template-btn" @click="copyTemplate">
+                <van-icon name="records-o" />
+                复制模板
+              </button>
+            </div>
+          </div> 
+          
+          <textarea 
+            v-model="quickFillText"
+            class="quick-fill-textarea"
+            placeholder="在此粘贴订单文本，支持解析以下字段：&#10;✓ 标题、地区、学校、年级、科目&#10;✓ 分数、频率、时间、薪资、要求&#10;✓ 联系方式、备注&#10;&#10;支持中英文冒号，字段顺序不限"
+          ></textarea>
+          
+          <div class="quick-fill-buttons">
+            <button 
+              class="parse-fill-btn primary" 
+              @click="parseAndFill"
+              :disabled="!quickFillText.trim()"
+            >
+              <van-icon name="completed" />
+              <span>一键解析填充</span>
+            </button>
+            <button 
+              class="parse-fill-btn secondary" 
+              @click="quickFillText = ''"
+              :disabled="!quickFillText.trim()"
+            >
+              <van-icon name="clear" />
+              <span>清空</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- 逐项填入模式 -->
+        <div class="form-scroll" v-if="isEdit || fillMode === 'manual'">
           <div class="form-group">
             <label>订单标题 <span class="required">*</span></label>
             <input v-model="form.title" placeholder="如：高三数学冲刺辅导" />
@@ -241,10 +392,14 @@
           <div class="form-row">
             <div class="form-group">
               <label>地区 <span class="required">*</span></label>
-              <select v-model="form.district">
-                <option value="">请选择</option>
-                <option v-for="d in configStore.districts" :key="d.value" :value="d.value">{{ d.label }}</option>
-              </select>
+              <el-select v-model="form.district" placeholder="请选择" clearable>
+                <el-option 
+                  v-for="d in configStore.districts" 
+                  :key="d.value" 
+                  :value="d.value"
+                  :label="d.label"
+                />
+              </el-select>
             </div>
             <div class="form-group">
               <label>学校</label>
@@ -260,17 +415,30 @@
           <div class="form-row">
             <div class="form-group">
               <label>学段 <span class="required">*</span></label>
-              <select v-model="form.gradeCategory" @change="onGradeCategoryChange">
-                <option value="">请选择</option>
-                <option v-for="cat in configStore.gradeCategories" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
-              </select>
+              <el-select 
+                v-model="form.gradeCategory" 
+                @change="onGradeCategoryChange"
+                placeholder="请选择"
+                clearable
+              >
+                <el-option 
+                  v-for="cat in configStore.gradeCategories" 
+                  :key="cat.value" 
+                  :value="cat.value"
+                  :label="cat.label"
+                />
+              </el-select>
             </div>
             <div class="form-group">
               <label>年级 <span class="required">*</span></label>
-              <select v-model="form.grade">
-                <option value="">请选择</option>
-                <option v-for="g in availableGrades" :key="g" :value="g">{{ g }}</option>
-              </select>
+              <el-select v-model="form.grade" placeholder="请选择" clearable>
+                <el-option 
+                  v-for="g in availableGrades" 
+                  :key="g" 
+                  :value="g"
+                  :label="g"
+                />
+              </el-select>
             </div>
           </div>
 
@@ -302,17 +470,7 @@
 
           <div class="form-group">
             <label>可选上课时间</label>
-            <div class="time-select">
-              <span 
-                v-for="t in configStore.timeOptions" 
-                :key="t"
-                class="time-option"
-                :class="{ selected: form.availableTimes.includes(t) }"
-                @click="toggleTime(t)"
-              >
-                {{ t }}
-              </span>
-            </div>
+            <input v-model="form.availableTimesText" placeholder="如：周末下午、周一到周五晚上" />
           </div>
 
           <div class="form-row">
@@ -322,10 +480,14 @@
             </div>
             <div class="form-group">
               <label>教师要求</label>
-              <select v-model="form.teacherType">
-                <option value="">请选择</option>
-                <option v-for="t in configStore.teacherTypes" :key="t" :value="t">{{ t }}</option>
-              </select>
+              <el-select v-model="form.teacherType" placeholder="请选择" clearable>
+                <el-option 
+                  v-for="t in configStore.teacherTypes" 
+                  :key="t" 
+                  :value="t"
+                  :label="t"
+                />
+              </el-select>
             </div>
           </div>
 
@@ -450,7 +612,7 @@ import { useOrderStore } from '../stores/order'
 import { useConfigStore } from '../stores/config'
 import { useAdminStore } from '../stores/admin'
 import { copyToClipboard } from '../utils/clipboard'
-import { showToast } from 'vant'
+import { showToast, showLoadingToast, closeToast } from 'vant'
 import ConfigManager from '../components/ConfigManager.vue'
 import AdminManager from '../components/AdminManager.vue'
 
@@ -463,8 +625,19 @@ const orders = computed(() => orderStore.orders)
 // 搜索和筛选
 const searchKeyword = ref('')
 const statusFilter = ref('')
-const dateFrom = ref('')
-const dateTo = ref('')
+const districtFilter = ref('')
+const gradeCategoryFilter = ref('')
+const gradeFilter = ref('')
+const subjectFilter = ref('')
+const teacherTypeFilter = ref('')
+const dateRange = ref([])
+const showDatePicker = ref(false)
+const showFilterSheet = ref(false)
+const currentFilterType = ref('')
+
+// 日期范围限制
+const minDate = new Date(2020, 0, 1)
+const maxDate = new Date(2030, 11, 31)
 
 // 返回顶部
 const showBackTop = ref(false)
@@ -477,8 +650,11 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('scroll', handleScroll)
+  // 加载配置和订单数据
+  await configStore.loadConfigs()
+  await orderStore.loadAdminOrders()
 })
 
 onUnmounted(() => {
@@ -494,12 +670,37 @@ const filteredOrders = computed(() => {
     result = result.filter(o => o.status === statusFilter.value)
   }
   
-  // 日期筛选
-  if (dateFrom.value) {
-    result = result.filter(o => o.date >= dateFrom.value)
+  // 地区筛选
+  if (districtFilter.value) {
+    result = result.filter(o => o.district === districtFilter.value)
   }
-  if (dateTo.value) {
-    result = result.filter(o => o.date <= dateTo.value)
+  
+  // 学段筛选
+  if (gradeCategoryFilter.value) {
+    result = result.filter(o => o.gradeCategory === gradeCategoryFilter.value)
+  }
+  
+  // 年级筛选
+  if (gradeFilter.value) {
+    result = result.filter(o => o.grade === gradeFilter.value)
+  }
+  
+  // 科目筛选
+  if (subjectFilter.value) {
+    result = result.filter(o => o.subjects && o.subjects.includes(subjectFilter.value))
+  }
+  
+  // 教师要求筛选
+  if (teacherTypeFilter.value) {
+    result = result.filter(o => o.teacherType === teacherTypeFilter.value)
+  }
+  
+  // 日期范围筛选
+  if (dateRange.value && dateRange.value.length === 2) {
+    const [start, end] = dateRange.value
+    const startStr = formatDate(start)
+    const endStr = formatDate(end)
+    result = result.filter(o => o.date >= startStr && o.date <= endStr)
   }
   
   // 关键词搜索
@@ -522,6 +723,129 @@ const filteredOrders = computed(() => {
   return result
 })
 
+// 获取所有科目
+const allSubjects = computed(() => {
+  return configStore.allSubjects
+})
+
+// 根据筛选学段获取年级
+const filterAvailableGrades = computed(() => {
+  if (!gradeCategoryFilter.value) {
+    let grades = []
+    configStore.gradeCategories.forEach(cat => {
+      grades = grades.concat(cat.grades)
+    })
+    return grades
+  }
+  return configStore.getGradesByCategory(gradeCategoryFilter.value)
+})
+
+// 判断是否有激活的筛选
+const hasActiveFilters = computed(() => {
+  return statusFilter.value || districtFilter.value || gradeCategoryFilter.value || 
+         gradeFilter.value || subjectFilter.value || teacherTypeFilter.value ||
+         (dateRange.value && dateRange.value.length > 0)
+})
+
+// 筛选标签文本
+const statusFilterLabel = computed(() => {
+  if (!statusFilter.value) return '状态'
+  return statusFilter.value === 'active' ? '上架' : '下架'
+})
+
+const districtFilterLabel = computed(() => {
+  if (!districtFilter.value) return '地区'
+  const d = configStore.districts.find(item => item.value === districtFilter.value)
+  return d?.label || districtFilter.value
+})
+
+const gradeCategoryFilterLabel = computed(() => {
+  if (!gradeCategoryFilter.value) return '学段'
+  const c = configStore.gradeCategories.find(item => item.value === gradeCategoryFilter.value)
+  return c?.label || gradeCategoryFilter.value
+})
+
+const gradeFilterLabel = computed(() => {
+  return gradeFilter.value || '年级'
+})
+
+const subjectFilterLabel = computed(() => {
+  return subjectFilter.value || '科目'
+})
+
+const teacherTypeFilterLabel = computed(() => {
+  return teacherTypeFilter.value || '要求'
+})
+
+const dateRangeLabel = computed(() => {
+  if (dateRange.value && dateRange.value.length === 2) {
+    const [start, end] = dateRange.value
+    return `${formatDate(start)} ~ ${formatDate(end)}`
+  }
+  return ''
+})
+
+// 筛选器弹窗标题
+const filterSheetTitle = computed(() => {
+  const titles = {
+    status: '选择状态',
+    district: '选择地区',
+    gradeCategory: '选择学段',
+    grade: '选择年级',
+    subject: '选择科目',
+    teacherType: '选择教师要求'
+  }
+  return titles[currentFilterType.value] || ''
+})
+
+// 筛选器选项
+const filterSheetOptions = computed(() => {
+  switch (currentFilterType.value) {
+    case 'status':
+      return [
+        { label: '全部状态', value: '' },
+        { label: '上架中', value: 'active' },
+        { label: '已下架', value: 'inactive' }
+      ]
+    case 'district':
+      return [
+        { label: '全部地区', value: '' },
+        ...configStore.districts.map(d => ({ label: d.label, value: d.value }))
+      ]
+    case 'gradeCategory':
+      return [
+        { label: '全部学段', value: '' },
+        ...configStore.gradeCategories.map(c => ({ label: c.label, value: c.value }))
+      ]
+    case 'grade':
+      return [
+        { label: '全部年级', value: '' },
+        ...filterAvailableGrades.value.map(g => ({ label: g, value: g }))
+      ]
+    case 'subject':
+      return [
+        { label: '全部科目', value: '' },
+        ...allSubjects.value.map(s => ({ label: s, value: s }))
+      ]
+    case 'teacherType':
+      return [
+        { label: '全部要求', value: '' },
+        ...configStore.teacherTypes.map(t => ({ label: t, value: t }))
+      ]
+    default:
+      return []
+  }
+})
+
+// 格式化日期
+function formatDate(date) {
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // 搜索变化
 function onSearchChange() {
   currentPage.value = 1
@@ -531,11 +855,83 @@ function onFilterChange() {
   currentPage.value = 1
 }
 
+function clearSearchInput() {
+  searchKeyword.value = ''
+  currentPage.value = 1
+}
+
 function clearSearch() {
   searchKeyword.value = ''
   statusFilter.value = ''
-  dateFrom.value = ''
-  dateTo.value = ''
+  districtFilter.value = ''
+  gradeCategoryFilter.value = ''
+  gradeFilter.value = ''
+  subjectFilter.value = ''
+  teacherTypeFilter.value = ''
+  dateRange.value = []
+  currentPage.value = 1
+}
+
+// 清空所有筛选
+function clearAllFilters() {
+  statusFilter.value = ''
+  districtFilter.value = ''
+  gradeCategoryFilter.value = ''
+  gradeFilter.value = ''
+  subjectFilter.value = ''
+  teacherTypeFilter.value = ''
+  dateRange.value = []
+  currentPage.value = 1
+}
+
+// 打开筛选器
+function openFilterSheet(type) {
+  currentFilterType.value = type
+  showFilterSheet.value = true
+}
+
+// 判断是否选中
+function isFilterSelected(value) {
+  const filterMap = {
+    status: statusFilter.value,
+    district: districtFilter.value,
+    gradeCategory: gradeCategoryFilter.value,
+    grade: gradeFilter.value,
+    subject: subjectFilter.value,
+    teacherType: teacherTypeFilter.value
+  }
+  return filterMap[currentFilterType.value] === value
+}
+
+// 选择筛选项
+function onSelectFilter(item) {
+  const filterMap = {
+    status: statusFilter,
+    district: districtFilter,
+    gradeCategory: gradeCategoryFilter,
+    grade: gradeFilter,
+    subject: subjectFilter,
+    teacherType: teacherTypeFilter
+  }
+  
+  const targetFilter = filterMap[currentFilterType.value]
+  if (targetFilter) {
+    targetFilter.value = item.value
+  }
+  
+  // 学段变化时清空年级
+  if (currentFilterType.value === 'gradeCategory') {
+    gradeFilter.value = ''
+  }
+  
+  showFilterSheet.value = false
+  currentPage.value = 1
+}
+
+// 日期范围确认
+function onDateConfirm(values) {
+  dateRange.value = values
+  showDatePicker.value = false
   currentPage.value = 1
 }
 
@@ -569,7 +965,7 @@ const defaultForm = {
   subjects: [],
   score: '',
   frequency: '',
-  availableTimes: [],
+  availableTimesText: '',
   price: '',
   teacherType: '',
   contact: '',
@@ -577,6 +973,10 @@ const defaultForm = {
 }
 
 const form = ref({ ...defaultForm })
+
+// 填充模式：quick 快速填入, manual 逐项填入
+const fillMode = ref('quick')
+const quickFillText = ref('')
 
 // 根据学段获取年级
 const availableGrades = computed(() => {
@@ -606,21 +1006,208 @@ function toggleSubject(subject) {
   }
 }
 
-// 切换时间选择
-function toggleTime(time) {
-  const index = form.value.availableTimes.indexOf(time)
-  if (index > -1) {
-    form.value.availableTimes.splice(index, 1)
-  } else {
-    form.value.availableTimes.push(time)
+// 快速填入解析函数
+function parseAndFill() {
+  const text = quickFillText.value.trim()
+  if (!text) return
+  
+  try {
+    // 解析标题
+    const titleMatch = text.match(/(?:标题)[：:]\s*([^\n]+)/i)
+    if (titleMatch) {
+      form.value.title = titleMatch[1].trim()
+    }
+    
+    // 解析地区 - 支持多种格式
+    const districtMatch = text.match(/(?:地址|地区)[：:]\s*([^-\n]+?)(?:[-\s]|$)/i)
+    if (districtMatch) {
+      const districtText = districtMatch[1].trim()
+      const district = configStore.districts.find(d => 
+        districtText.includes(d.label) || d.label.includes(districtText)
+      )
+      if (district) form.value.district = district.value
+    }
+    
+    // 解析详细地址 - 完整地址行
+    const addressMatch = text.match(/(?:地址|地区)[：:]\s*(.+?)(?:\n|$)/i)
+    if (addressMatch) {
+      let fullAddress = addressMatch[1].trim()
+      // 提取地区后的详细地址
+      const detailMatch = fullAddress.match(/[^-]*-(.+)/)
+      if (detailMatch) {
+        form.value.address = detailMatch[1].trim()
+      } else {
+        form.value.address = fullAddress
+      }
+    }
+    
+    // 解析学校
+    const schoolMatch = text.match(/(?:学校)[：:]\s*([^\n]+)/i)
+    if (schoolMatch) {
+      form.value.school = schoolMatch[1].trim()
+    }
+    
+    // 解析年级和学段 - 支持多种格式
+    let gradeMatch = text.match(/(?:年级|学生)[：:]\s*([^\n]+)/i)
+    if (!gradeMatch) {
+      gradeMatch = text.match(/([小初高][一二三四五六]|初[一二三]|高[一二三]|[一二三四五六]年级)(?:女生|男生|学生)?/i)
+    }
+    
+    if (gradeMatch) {
+      const gradeText = (gradeMatch[1] || gradeMatch[2] || '').trim()
+      
+      // 智能判断学段
+      if (gradeText.includes('小学') || gradeText.includes('小') || /[一二三四五六]年级/.test(gradeText)) {
+        form.value.gradeCategory = 'primary'
+      } else if (gradeText.includes('初') || gradeText.includes('中考')) {
+        form.value.gradeCategory = 'junior'
+      } else if (gradeText.includes('高') || gradeText.includes('高考')) {
+        form.value.gradeCategory = 'senior'
+      }
+      
+      // 匹配具体年级
+      const gradeMap = {
+        '一年级': '一年级', '二年级': '二年级', '三年级': '三年级',
+        '四年级': '四年级', '五年级': '五年级', '六年级': '六年级',
+        '小一': '一年级', '小二': '二年级', '小三': '三年级',
+        '小四': '四年级', '小五': '五年级', '小六': '六年级',
+        '初一': '初一', '初二': '初二', '初三': '初三',
+        '高一': '高一', '高二': '高二', '高三': '高三'
+      }
+      
+      for (const [key, value] of Object.entries(gradeMap)) {
+        if (gradeText.includes(key)) {
+          form.value.grade = value
+          break
+        }
+      }
+    }
+    
+    // 解析科目 - 支持多科目和中英文分隔符
+    const subjectsMatch = text.match(/(?:科目)[：:]\s*([^\n]+)/i)
+    if (subjectsMatch) {
+      const subjectsText = subjectsMatch[1].trim()
+      const allSubjects = configStore.allSubjects
+      const foundSubjects = []
+      
+      allSubjects.forEach(subject => {
+        if (subjectsText.includes(subject)) {
+          foundSubjects.push(subject)
+        }
+      })
+      
+      if (foundSubjects.length > 0) {
+        form.value.subjects = foundSubjects
+      }
+    }
+    
+    // 解析分数/成绩
+    const scoreMatch = text.match(/(?:分数|成绩|平时分)[：:]\s*([^\n]+)/i)
+    if (scoreMatch) {
+      form.value.score = scoreMatch[1].trim()
+    }
+    
+    // 解析时间 - 区分频率和可选时间
+    const frequencyMatch = text.match(/(?:频率|上课频率)[：:]\s*([^\n]+)/i)
+    if (frequencyMatch) {
+      form.value.frequency = frequencyMatch[1].trim()
+    }
+    
+    const timeMatch = text.match(/(?:时间|上课时间|可选时间)[：:]\s*([^\n]+)/i)
+    if (timeMatch) {
+      const timeText = timeMatch[1].trim()
+      
+      // 如果包含频率关键词，存入频率字段
+      if (/\d+次/.test(timeText) || timeText.includes('/周') || timeText.includes('/月') || timeText.includes('每周')) {
+        if (!form.value.frequency) {
+          form.value.frequency = timeText
+        }
+      } else {
+        // 否则作为可选时间文本存储
+        form.value.availableTimesText = timeText
+      }
+    }
+    
+    // 解析薪资 - 支持多种表达
+    const priceMatch = text.match(/(?:薪资|价格|工资|到手价|薪酬)[：:]\s*([^\n]+)/i)
+    if (priceMatch) {
+      form.value.price = priceMatch[1].trim()
+    }
+    
+    // 解析教师要求
+    const requirementMatch = text.match(/(?:要求|教师要求|老师要求)[：:]\s*([^\n]+)/i)
+    if (requirementMatch) {
+      const reqText = requirementMatch[1].trim()
+      const matchedType = configStore.teacherTypes.find(t => 
+        reqText.includes(t) || t.includes(reqText)
+      )
+      if (matchedType) {
+        form.value.teacherType = matchedType
+      } else {
+        // 如果没有匹配到，直接使用文本
+        form.value.teacherType = reqText
+      }
+    }
+    
+    // 解析联系方式
+    const contactMatch = text.match(/(?:联系方式|联系电话|电话|手机)[：:]\s*([^\n]+)/i)
+    if (contactMatch) {
+      form.value.contact = contactMatch[1].trim()
+    }
+    
+    // 解析备注 - 支持多行
+    const noteMatch = text.match(/(?:备注|说明|其他)[：:]\s*([\s\S]+?)(?=(?:\n[^\n]*[：:]|$))/i)
+    if (noteMatch) {
+      form.value.note = noteMatch[1].trim()
+    }
+    
+    // 自动生成标题（如果没有解析到标题）
+    if (!form.value.title && form.value.grade && form.value.subjects.length > 0) {
+      form.value.title = `${form.value.grade}${form.value.subjects.join('、')}辅导`
+    }
+    
+    // 切换到逐项填入模式查看结果
+    fillMode.value = 'manual'
+    
+    // 同步更新富文本编辑器内容
+    nextTick(() => {
+      setEditorContent(form.value.note || '')
+    })
+    
+    showToast('解析成功！请检查并补充信息')
+    
+  } catch (error) {
+    console.error('解析失败:', error)
+    showToast('解析失败，请检查文本格式')
   }
+}
+
+// 复制模板
+function copyTemplate() {
+  const template = `标题：初三数学英语辅导
+地区：同安区-禹洲天境
+学校：厦门一中
+年级：初三女生
+科目：数学、英语
+分数：85/150（基础较差）
+频率：2次/周
+时间：周末下午
+薪资：200-240元/2小时
+要求：大学生
+联系方式：138****8888
+备注：学生比较内向，需要耐心引导`
+  
+  copyToClipboard(template)
+  showToast('模板已复制！')
 }
 
 // 打开新增弹窗
 function openAddModal() {
   isEdit.value = false
   currentOrderId.value = null
-  form.value = { ...defaultForm, subjects: [], availableTimes: [] }
+  form.value = { ...defaultForm, subjects: [] }
+  fillMode.value = 'quick'
+  quickFillText.value = ''
   showModal.value = true
   setEditorContent('')
 }
@@ -639,7 +1226,7 @@ function openEditModal(order) {
     subjects: [...order.subjects],
     score: order.score,
     frequency: order.frequency,
-    availableTimes: [...order.availableTimes],
+    availableTimesText: order.availableTimesText || (order.availableTimes && order.availableTimes.length > 0 ? order.availableTimes.join('、') : ''),
     price: order.price,
     teacherType: order.teacherType,
     contact: order.contact || '',
@@ -650,7 +1237,7 @@ function openEditModal(order) {
 }
 
 // 提交表单
-function submitForm() {
+async function submitForm() {
   // 验证必填项
   if (!form.value.title || !form.value.district || !form.value.address || 
       !form.value.gradeCategory || !form.value.grade || form.value.subjects.length === 0) {
@@ -658,35 +1245,29 @@ function submitForm() {
     return
   }
 
-  const now = new Date()
-  const dateStr = now.toISOString().split('T')[0]
-  const timeStr = now.toLocaleString('zh-CN')
+  showLoadingToast({ message: isEdit.value ? '保存中...' : '添加中...', forbidClick: true })
 
   if (isEdit.value) {
     // 编辑订单
-    const index = orderStore.orders.findIndex(o => o.id === currentOrderId.value)
-    if (index > -1) {
-      orderStore.orders[index] = {
-        ...orderStore.orders[index],
-        ...form.value,
-        updateTime: timeStr
-      }
+    const result = await orderStore.updateOrder(currentOrderId.value, form.value)
+    closeToast()
+    if (result.success) {
       showToast('修改成功')
+      showModal.value = false
+    } else {
+      showToast(result.message || '修改失败')
     }
   } else {
     // 新增订单
-    const newOrder = {
-      id: `JJ${dateStr.replace(/-/g, '')}${String(orders.value.length + 1).padStart(3, '0')}`,
-      date: dateStr,
-      ...form.value,
-      status: 'active',
-      createTime: timeStr
+    const result = await orderStore.createOrder(form.value)
+    closeToast()
+    if (result.success) {
+      showToast('添加成功')
+      showModal.value = false
+    } else {
+      showToast(result.message || '添加失败')
     }
-    orderStore.orders.unshift(newOrder)
-    showToast('添加成功')
   }
-
-  showModal.value = false
 }
 
 // 确认上下架
@@ -696,10 +1277,17 @@ function confirmToggle(order) {
 }
 
 // 切换订单状态
-function toggleOrderStatus() {
+async function toggleOrderStatus() {
   if (orderToToggle.value) {
-    orderToToggle.value.status = orderToToggle.value.status === 'active' ? 'inactive' : 'active'
-    showToast(orderToToggle.value.status === 'active' ? '已上架' : '已下架')
+    showLoadingToast({ message: '处理中...', forbidClick: true })
+    const result = await orderStore.toggleOrderStatus(orderToToggle.value.id)
+    closeToast()
+    
+    if (result.success) {
+      showToast(result.data.status === 'active' ? '已上架' : '已下架')
+    } else {
+      showToast(result.message || '操作失败')
+    }
     orderToToggle.value = null
   }
 }
@@ -711,13 +1299,19 @@ function confirmDelete(order) {
 }
 
 // 删除订单
-function deleteOrder() {
-  const index = orderStore.orders.findIndex(o => o.id === orderToDelete.value.id)
-  if (index > -1) {
-    orderStore.orders.splice(index, 1)
-    showToast('删除成功')
+async function deleteOrder() {
+  if (orderToDelete.value) {
+    showLoadingToast({ message: '删除中...', forbidClick: true })
+    const result = await orderStore.deleteOrder(orderToDelete.value.id)
+    closeToast()
+    
+    if (result.success) {
+      showToast('删除成功')
+    } else {
+      showToast(result.message || '删除失败')
+    }
+    orderToDelete.value = null
   }
-  orderToDelete.value = null
 }
 
 // 复制联系方式
@@ -764,6 +1358,9 @@ function handleLogout() {
   min-height: 100vh;
   background: #f5f7fa;
   padding-bottom: 20px;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .admin-header {
@@ -772,6 +1369,8 @@ function handleLogout() {
   position: sticky;
   top: 0;
   z-index: 100;
+  width: 100%;
+  max-width: 100%;
 }
 
 .header-top {
@@ -860,111 +1459,200 @@ function handleLogout() {
   transform: scale(0.98);
 }
 
-/* 搜索区域 - 固定 */
+/* 搜索筛选区域 */
 .search-section {
-  padding: 12px 16px;
   background: #fff;
-  border-bottom: 1px solid #f0f0f0;
   position: sticky;
   top: 108px;
   z-index: 99;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .search-bar {
+  padding: 8px 8px 0;
+}
+
+.search-bar :deep(.van-search__content) {
+  background: #f5f7fa;
+  border-radius: 20px;
+}
+
+.search-bar :deep(.van-search) {
+  padding: 8px 0;
+}
+
+/* 横向滚动筛选栏 */
+
+.filter-tabs {
+  display: flex;
+  padding: 12px 16px 8px;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-tab {
   display: flex;
   align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
   background: #f5f7fa;
-  border-radius: 10px;
-  padding: 0 12px;
-  height: 42px;
-}
-
-.search-icon {
-  font-size: 18px;
-  color: #999;
-  margin-right: 8px;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  color: #333;
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: #bbb;
-}
-
-.clear-icon {
-  font-size: 18px;
-  color: #999;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.clear-icon:active {
+  border-radius: 18px;
+  font-size: 13px;
   color: #666;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  border: 1px solid transparent;
 }
 
-.filter-row {
+.filter-tab:active {
+  transform: scale(0.95);
+}
+
+.filter-tab.active {
+  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.filter-tab span {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.filter-tab.date-tab {
+  gap: 5px;
+}
+
+.filter-tab.date-tab span {
+  max-width: 140px;
+  font-size: 12px;
+}
+
+.filter-tab .van-icon {
+  flex-shrink: 0;
+}
+
+/* 筛选底栏 */
+.filter-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 10px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.filter-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-filter {
-  padding: 6px 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #666;
-  background: #fff;
-  outline: none;
-}
-
-.status-filter:focus {
-  border-color: #3B82F6;
-}
-
-.date-filter {
-  padding: 6px 10px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #666;
-  background: #fff;
-  outline: none;
-  width: 130px;
-}
-
-.date-filter:focus {
-  border-color: #3B82F6;
-}
-
-.date-separator {
-  font-size: 12px;
-  color: #999;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border-top: 1px solid #f0f0f0;
 }
 
 .filter-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+}
+
+.filter-result .van-icon {
+  font-size: 15px;
+  color: #3B82F6;
+}
+
+.filter-result strong {
+  color: #3B82F6;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: #fff;
+  color: #666;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
   font-size: 12px;
-  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: #f8fafc;
+  border-color: #d1d5db;
+}
+
+.reset-btn:active {
+  transform: scale(0.95);
+  background: #f1f5f9;
+}
+
+.reset-btn .van-icon {
+  font-size: 13px;
+}
+
+/* 选择器弹窗 */
+.picker-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px 0 20px;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  font-size: 15px;
+  color: #333;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.picker-item:active {
+  background: #f5f7fa;
+}
+
+.picker-item.active {
+  color: #3B82F6;
+  font-weight: 500;
+  background: #eff6ff;
+}
+
+.picker-item .check-icon {
+  color: #3B82F6;
+  font-size: 18px;
+}
+
+:deep(.van-action-sheet__header) {
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+  padding: 16px;
+}
+
+:deep(.van-calendar__header-title) {
+  font-weight: 600;
+}
+
+:deep(.van-calendar__confirm) {
+  color: #3B82F6;
 }
 
 .order-list {
   padding: 5px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* 订单卡片 */
@@ -974,6 +1662,9 @@ function handleLogout() {
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .order-card.inactive {
@@ -1320,6 +2011,9 @@ function handleLogout() {
   height: 100%;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .modal-title {
@@ -1329,12 +2023,214 @@ function handleLogout() {
   padding: 16px;
   margin: 0;
   border-bottom: 1px solid #eee;
+  width: 100%;
+}
+
+/* 模式选择器 */
+.mode-selector {
+  display: flex;
+  padding: 12px 16px;
+  gap: 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #eee;
+}
+
+.mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  background: #fff;
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-tab .van-icon {
+  font-size: 18px;
+}
+
+.mode-tab.active {
+  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  border-color: #3B82F6;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px);
+}
+
+.mode-tab:not(.active):active {
+  transform: scale(0.97);
+}
+
+/* 快速填入模式 */
+.quick-fill-mode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+  gap: 12px;
+}
+
+.quick-fill-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #EFF6FF;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #2563EB;
+}
+
+.quick-fill-hint .van-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* 模板参考卡片 */
+.template-reference {
+  display: flex;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.template-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.template-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400E;
+}
+
+.copy-template-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #F59E0B;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-template-btn:active {
+  transform: scale(0.95);
+  background: #D97706;
+}
+
+.template-content {
+  padding: 12px 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.template-content pre {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #78350F;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.quick-fill-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 200px;
+  padding: 14px;
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.quick-fill-textarea:focus {
+  outline: none;
+  border-color: #3B82F6;
+  background: #F9FAFB;
+}
+
+.quick-fill-textarea::placeholder {
+  color: #9CA3AF;
+  line-height: 1.8;
+}
+
+.quick-fill-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.parse-fill-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.parse-fill-btn.primary {
+  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.parse-fill-btn.primary:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.parse-fill-btn.secondary {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.parse-fill-btn.secondary:not(:disabled):active {
+  background: #E5E7EB;
+}
+
+.parse-fill-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.parse-fill-btn .van-icon {
+  font-size: 18px;
 }
 
 .form-scroll {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group {
@@ -1353,7 +2249,6 @@ function handleLogout() {
 }
 
 .form-group input,
-.form-group select,
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;
@@ -1367,13 +2262,30 @@ function handleLogout() {
 }
 
 .form-group input:focus,
-.form-group select:focus,
 .form-group textarea:focus {
   border-color: #3B82F6;
 }
 
 .form-group textarea {
   resize: none;
+}
+
+/* Element Plus Select 在 form-group 中的样式 */
+.form-group :deep(.el-select) {
+  width: 100%;
+}
+
+.form-group :deep(.el-select .el-input__wrapper) {
+  background: #f9fafb;
+  transition: all 0.2s;
+}
+
+.form-group :deep(.el-select .el-input__wrapper:hover) {
+  background: #fff;
+}
+
+.form-group :deep(.el-select.is-focus .el-input__wrapper) {
+  background: #fff;
 }
 
 .form-row {
@@ -1462,71 +2374,6 @@ function handleLogout() {
   padding: 12px 16px;
   background: #fff;
   border-bottom: 1px solid #f0f0f0;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 0 12px;
-  height: 42px;
-}
-
-.search-icon {
-  font-size: 18px;
-  color: #999;
-  margin-right: 8px;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  color: #333;
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: #bbb;
-}
-
-.clear-icon {
-  font-size: 18px;
-  color: #999;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.clear-icon:active {
-  color: #666;
-}
-
-.filter-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-
-.status-filter {
-  padding: 6px 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #666;
-  background: #fff;
-  outline: none;
-}
-
-.status-filter:focus {
-  border-color: #3B82F6;
-}
-
-.filter-result {
-  font-size: 12px;
-  color: #999;
 }
 
 /* 富文本编辑器 */
@@ -1675,8 +2522,15 @@ function handleLogout() {
   }
   
   .search-section {
-    border-radius: 0 0 16px 16px;
-    top: 108px;
+    position: sticky;
+    top: 0;
+    border-radius: 16px;
+    margin: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  
+  .filter-tabs {
+    justify-content: flex-start;
   }
   
   .order-list {

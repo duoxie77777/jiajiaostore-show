@@ -12,7 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
       type: 'mysql',
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT) || 3306,
-      username: process.env.DB_USER || 'root',
+      username: process.env.DB_USER || 'jiajiao',
       password: process.env.DB_PASSWORD || '123456',
       database: process.env.DB_NAME || 'jiajiao',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],

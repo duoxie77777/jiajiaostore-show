@@ -22,7 +22,7 @@
                 {{ admin.role === 'super' ? '超级管理员' : '普通管理员' }}
               </span>
             </div>
-            <div class="admin-time">创建于 {{ admin.createTime }}</div>
+            <div class="admin-time">创建于 {{ formatDateTime(admin.createTime, 'date') }}</div>
           </div>
         </div>
         <div class="admin-actions">
@@ -146,11 +146,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAdminStore } from '../stores/admin'
-import { showToast } from 'vant'
+import { showToast, showLoadingToast, closeToast } from 'vant'
+import { formatDateTime } from '../utils/date'
 
 const adminStore = useAdminStore()
+
+// 加载管理员列表
+onMounted(async () => {
+  await adminStore.loadAdmins()
+})
 
 // 新增管理员
 const showAddModal = ref(false)
@@ -165,7 +171,7 @@ function openAddModal() {
   showAddModal.value = true
 }
 
-function addNewAdmin() {
+async function addNewAdmin() {
   if (!newAdmin.value.username) {
     showToast('请输入用户名')
     return
@@ -179,12 +185,15 @@ function addNewAdmin() {
     return
   }
   
-  const result = adminStore.addAdmin(newAdmin.value.username, newAdmin.value.password)
+  showLoadingToast({ message: '添加中...', forbidClick: true })
+  const result = await adminStore.addAdmin(newAdmin.value.username, newAdmin.value.password)
+  closeToast()
+  
   if (result.success) {
     showToast('添加成功')
     showAddModal.value = false
   } else {
-    showToast(result.message)
+    showToast(result.message || '添加失败')
   }
 }
 
@@ -203,7 +212,7 @@ function openPasswordModal(admin) {
   showPasswordModal.value = true
 }
 
-function submitPasswordChange() {
+async function submitPasswordChange() {
   if (!passwordForm.value.new || passwordForm.value.new.length < 6) {
     showToast('新密码至少6位')
     return
@@ -213,24 +222,29 @@ function submitPasswordChange() {
     return
   }
 
+  showLoadingToast({ message: '修改中...', forbidClick: true })
   let result
+  
   // 超级管理员修改他人密码
   if (adminStore.isSuperAdmin && editingAdmin.value?.id !== adminStore.currentAdmin?.id) {
-    result = adminStore.resetPassword(editingAdmin.value.id, passwordForm.value.new)
+    result = await adminStore.resetPassword(editingAdmin.value.id, passwordForm.value.new)
   } else {
     // 修改自己的密码
     if (!passwordForm.value.old) {
+      closeToast()
       showToast('请输入原密码')
       return
     }
-    result = adminStore.changePassword(editingAdmin.value.id, passwordForm.value.old, passwordForm.value.new)
+    result = await adminStore.changePassword(passwordForm.value.old, passwordForm.value.new)
   }
 
+  closeToast()
+  
   if (result.success) {
     showToast('修改成功')
     showPasswordModal.value = false
   } else {
-    showToast(result.message)
+    showToast(result.message || '修改失败')
   }
 }
 
@@ -241,7 +255,7 @@ const ownPassword = ref({
   confirm: ''
 })
 
-function changeOwnPassword() {
+async function changeOwnPassword() {
   if (!ownPassword.value.old) {
     showToast('请输入原密码')
     return
@@ -255,17 +269,18 @@ function changeOwnPassword() {
     return
   }
 
-  const result = adminStore.changePassword(
-    adminStore.currentAdmin.id, 
+  showLoadingToast({ message: '修改中...', forbidClick: true })
+  const result = await adminStore.changePassword(
     ownPassword.value.old, 
     ownPassword.value.new
   )
+  closeToast()
   
   if (result.success) {
     showToast('修改成功')
     ownPassword.value = { old: '', new: '', confirm: '' }
   } else {
-    showToast(result.message)
+    showToast(result.message || '修改失败')
   }
 }
 
@@ -278,12 +293,15 @@ function confirmDeleteAdmin(admin) {
   showDeleteConfirm.value = true
 }
 
-function deleteAdmin() {
-  const result = adminStore.deleteAdmin(adminToDelete.value.id)
+async function deleteAdmin() {
+  showLoadingToast({ message: '删除中...', forbidClick: true })
+  const result = await adminStore.deleteAdmin(adminToDelete.value.id)
+  closeToast()
+  
   if (result.success) {
     showToast('删除成功')
   } else {
-    showToast(result.message)
+    showToast(result.message || '删除失败')
   }
   adminToDelete.value = null
 }

@@ -43,6 +43,10 @@ export class CreateOrderDto {
 
   @IsString()
   @IsOptional()
+  availableTimesText?: string;
+
+  @IsString()
+  @IsOptional()
   price?: string;
 
   @IsString()

@@ -126,27 +126,6 @@
       </div>
     </div>
 
-    <!-- 时间选项配置 -->
-    <div v-if="activeTab === 'time'" class="config-section">
-      <div class="section-header">
-        <h3>可选时间管理</h3>
-        <button class="add-btn" @click="openAddModal('time')">
-          <van-icon name="plus" /> 新增
-        </button>
-      </div>
-      <div class="time-list">
-        <span 
-          v-for="item in configStore.timeOptions" 
-          :key="item" 
-          class="time-tag"
-        >
-          {{ item }}
-          <van-icon name="edit" class="tag-edit" @click="openEditModal('time', item, item)" />
-          <van-icon name="cross" class="tag-delete" @click="handleDelete('time', item)" />
-        </span>
-      </div>
-    </div>
-
     <!-- 新增/编辑弹窗 -->
     <van-dialog
       v-model:show="showModal"
@@ -185,8 +164,7 @@ const tabs = [
   { key: 'district', label: '地区' },
   { key: 'grade', label: '学段/年级' },
   { key: 'subject', label: '科目' },
-  { key: 'teacher', label: '教师类型' },
-  { key: 'time', label: '时间选项' }
+  { key: 'teacher', label: '教师类型' }
 ]
 
 const activeTab = ref('district')
@@ -236,9 +214,6 @@ async function syncToServer(type) {
     case 'teacher':
       success = await configStore.syncTeacherTypes()
       break
-    case 'time':
-      success = await configStore.syncTimeOptions()
-      break
   }
   
   syncing.value = false
@@ -260,8 +235,7 @@ function openAddModal(type, categoryValue = '') {
     gradeCategory: '新增学段',
     grade: '新增年级',
     subject: '新增科目',
-    teacher: '新增教师类型',
-    time: '新增时间选项'
+    teacher: '新增教师类型'
   }
   modalTitle.value = titles[type]
   inputPlaceholder.value = `请输入${titles[type].replace('新增', '')}名称`
@@ -283,8 +257,7 @@ function openEditModal(type, oldValue, currentValue, categoryValue = '') {
     gradeCategory: '编辑学段',
     grade: '编辑年级',
     subject: '编辑科目',
-    teacher: '编辑教师类型',
-    time: '编辑时间选项'
+    teacher: '编辑教师类型'
   }
   modalTitle.value = titles[type]
   inputPlaceholder.value = `请输入新名称`
@@ -320,9 +293,6 @@ async function handleSubmit() {
       case 'teacher':
         success = configStore.addTeacherType(value)
         break
-      case 'time':
-        success = configStore.addTimeOption(value)
-        break
     }
   } else {
     switch (type) {
@@ -340,9 +310,6 @@ async function handleSubmit() {
         break
       case 'teacher':
         success = configStore.updateTeacherType(oldValue, value)
-        break
-      case 'time':
-        success = configStore.updateTimeOption(oldValue, value)
         break
     }
   }
@@ -383,9 +350,6 @@ async function confirmDelete() {
       break
     case 'teacher':
       success = configStore.deleteTeacherType(value)
-      break
-    case 'time':
-      success = configStore.deleteTimeOption(value)
       break
   }
 
@@ -540,15 +504,13 @@ async function confirmDelete() {
   height: 28px;
 }
 
-.grade-list,
-.time-list {
+.grade-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.grade-tag,
-.time-tag {
+.grade-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;

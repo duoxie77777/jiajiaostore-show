@@ -61,18 +61,26 @@
     <!-- 日期筛选展开区 -->
     <div class="date-picker-row" v-show="showDatePicker">
       <div class="date-inputs">
-        <input 
-          type="date" 
-          v-model="dateFrom" 
-          class="date-input"
+        <el-date-picker
+          v-model="dateFrom"
+          type="date"
+          placeholder="开始日期"
+          format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
           @change="handleDateChange"
+          size="small"
+          class="custom-date-picker"
         />
         <span class="date-separator">至</span>
-        <input 
-          type="date" 
-          v-model="dateTo" 
-          class="date-input"
+        <el-date-picker
+          v-model="dateTo"
+          type="date"
+          placeholder="结束日期"
+          format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
           @change="handleDateChange"
+          size="small"
+          class="custom-date-picker"
         />
       </div>
       <button class="date-clear" v-if="dateFrom || dateTo" @click="clearDate">
@@ -324,10 +332,15 @@ watch(showPicker, (val) => {
   z-index: 10;
   padding: 12px 0;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .search-bar {
   padding: 0 8px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .search-bar :deep(.van-search__content) {
@@ -340,6 +353,8 @@ watch(showPicker, (val) => {
   gap: 10px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
 }
 
 .filter-tabs::-webkit-scrollbar {
@@ -387,6 +402,8 @@ watch(showPicker, (val) => {
   justify-content: space-between;
   padding: 8px 16px 12px;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .date-inputs {
@@ -394,27 +411,27 @@ watch(showPicker, (val) => {
   align-items: center;
   gap: 8px;
   flex: 1;
+  min-width: 0;
 }
 
-.date-input {
+.custom-date-picker {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #666;
-  background: #fff;
-  outline: none;
-  max-width: 140px;
+  max-width: 150px;
 }
 
-.date-input:focus {
-  border-color: #3B82F6;
+.custom-date-picker :deep(.el-input__wrapper) {
+  padding: 6px 10px;
+  background: #fff;
+}
+
+.custom-date-picker :deep(.el-input__inner) {
+  font-size: 13px;
 }
 
 .date-separator {
   font-size: 12px;
   color: #999;
+  margin: 0 4px;
 }
 
 .date-clear {
@@ -508,8 +525,8 @@ watch(showPicker, (val) => {
     max-width: 400px;
   }
   
-  .date-input {
-    max-width: 160px;
+  .date-inputs :deep(.el-date-editor) {
+    max-width: 180px;
   }
 }
 </style>

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 // API基础地址
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://jiajiaostore.top:8889/api'
 
 export const useConfigStore = defineStore('config', () => {
   // 是否已加载
@@ -10,16 +10,12 @@ export const useConfigStore = defineStore('config', () => {
   
   // 地区配置
   const districts = ref([
-    { value: '南山区', label: '南山区' },
-    { value: '福田区', label: '福田区' },
-    { value: '罗湖区', label: '罗湖区' },
-    { value: '宝安区', label: '宝安区' },
-    { value: '龙岗区', label: '龙岗区' },
-    { value: '龙华区', label: '龙华区' },
-    { value: '光明区', label: '光明区' },
-    { value: '坪山区', label: '坪山区' },
-    { value: '盐田区', label: '盐田区' },
-    { value: '大鹏新区', label: '大鹏新区' }
+    { value: '思明区', label: '思明区' },
+    { value: '湖里区', label: '湖里区' },
+    { value: '集美区', label: '集美区' },
+    { value: '海沧区', label: '海沧区' },
+    { value: '同安区', label: '同安区' },
+    { value: '翔安区', label: '翔安区' }
   ])
 
   // 学段配置
@@ -51,9 +47,6 @@ export const useConfigStore = defineStore('config', () => {
   // 教师类型配置
   const teacherTypes = ref(['大学生', '机构老师', '专职老师', '在职老师', '不限'])
 
-  // 可选时间配置
-  const timeOptions = ref(['周一', '周二', '周三', '周四', '周五', '周六', '周日', '上午', '下午', '晚上', '寒暑假', '随时可约'])
-
   // 从后端加载配置
   async function loadConfigs() {
     try {
@@ -75,7 +68,6 @@ export const useConfigStore = defineStore('config', () => {
           }
         }
         if (data.teacherTypes) teacherTypes.value = data.teacherTypes
-        if (data.timeOptions) timeOptions.value = data.timeOptions
         loaded.value = true
         console.log('✅ 配置已从服务器加载')
       }
@@ -123,11 +115,6 @@ export const useConfigStore = defineStore('config', () => {
   // 保存教师类型配置
   async function syncTeacherTypes() {
     return saveConfig('teacherTypes', teacherTypes.value)
-  }
-
-  // 保存时间选项配置
-  async function syncTimeOptions() {
-    return saveConfig('timeOptions', timeOptions.value)
   }
 
   // 获取所有年级（扁平化）
@@ -309,40 +296,12 @@ export const useConfigStore = defineStore('config', () => {
     return false
   }
 
-  // ========== 时间选项操作 ==========
-  function addTimeOption(name) {
-    if (name && !timeOptions.value.includes(name)) {
-      timeOptions.value.push(name)
-      return true
-    }
-    return false
-  }
-
-  function updateTimeOption(oldName, newName) {
-    const index = timeOptions.value.indexOf(oldName)
-    if (index > -1 && newName) {
-      timeOptions.value[index] = newName
-      return true
-    }
-    return false
-  }
-
-  function deleteTimeOption(name) {
-    const index = timeOptions.value.indexOf(name)
-    if (index > -1) {
-      timeOptions.value.splice(index, 1)
-      return true
-    }
-    return false
-  }
-
   return {
     loaded,
     districts,
     gradeCategories,
     subjects,
     teacherTypes,
-    timeOptions,
     allGrades,
     allSubjects,
     getGradesByCategory,
@@ -352,7 +311,6 @@ export const useConfigStore = defineStore('config', () => {
     syncDistricts,
     syncGradeCategories,
     syncTeacherTypes,
-    syncTimeOptions,
     // 地区
     addDistrict,
     updateDistrict,
@@ -372,10 +330,6 @@ export const useConfigStore = defineStore('config', () => {
     // 教师类型
     addTeacherType,
     updateTeacherType,
-    deleteTeacherType,
-    // 时间选项
-    addTimeOption,
-    updateTimeOption,
-    deleteTimeOption
+    deleteTeacherType
   }
 })

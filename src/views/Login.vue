@@ -66,11 +66,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAdminStore } from '../stores/admin'
 import { showToast } from 'vant'
 
 const router = useRouter()
+const route = useRoute()
 const adminStore = useAdminStore()
 
 const username = ref('')
@@ -80,7 +81,7 @@ const loading = ref(false)
 const usernameFocused = ref(false)
 const passwordFocused = ref(false)
 
-function handleLogin() {
+async function handleLogin() {
   if (!username.value) {
     showToast('请输入用户名')
     return
@@ -92,18 +93,37 @@ function handleLogin() {
 
   loading.value = true
   
-  // 模拟登录延迟
-  setTimeout(() => {
-    const result = adminStore.login(username.value, password.value)
+  try {
+    const result = await adminStore.login(username.value, password.value)
     loading.value = false
     
-    if (result.success) {
+    console.log('登录结果:', result) // 调试日志
+    
+    if (result && result.success) {
       showToast('登录成功')
-      router.replace('/back')
+      
+      // 获取重定向地址，如果没有则默认跳转到后台首页
+      const redirect = route.query.redirect || '/back'
+      
+      setTimeout(() => {
+        router.replace(redirect)
+      }, 500)
     } else {
-      showToast(result.message)
+      const errorMsg = result?.message || '登录失败'
+      console.log('显示错误:', errorMsg) // 调试日志
+      showToast({
+        message: errorMsg,
+        duration: 2000
+      })
     }
-  }, 500)
+  } catch (error) {
+    loading.value = false
+    console.error('登录异常:', error)
+    showToast({
+      message: '登录失败，请重试',
+      duration: 2000
+    })
+  }
 }
 </script>
 
@@ -111,6 +131,9 @@ function handleLogin() {
 .login-page {
   min-height: 100vh;
   background: #f5f7fa;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* 头部装饰 */

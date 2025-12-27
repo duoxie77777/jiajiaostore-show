@@ -20,7 +20,7 @@ async function bootstrap() {
     transform: true,
   }));
   
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 9900;
   await app.listen(port);
   console.log(`🚀 服务已启动: http://localhost:${port}/api`);
 }

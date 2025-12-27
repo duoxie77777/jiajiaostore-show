@@ -6,16 +6,12 @@ import { Config } from './config.entity';
 // 默认配置
 const DEFAULT_CONFIGS = {
   districts: [
-    { value: '南山区', label: '南山区' },
-    { value: '福田区', label: '福田区' },
-    { value: '罗湖区', label: '罗湖区' },
-    { value: '宝安区', label: '宝安区' },
-    { value: '龙岗区', label: '龙岗区' },
-    { value: '龙华区', label: '龙华区' },
-    { value: '光明区', label: '光明区' },
-    { value: '坪山区', label: '坪山区' },
-    { value: '盐田区', label: '盐田区' },
-    { value: '大鹏新区', label: '大鹏新区' }
+    { value: '思明区', label: '思明区' },
+    { value: '湖里区', label: '湖里区' },
+    { value: '集美区', label: '集美区' },
+    { value: '海沧区', label: '海沧区' },
+    { value: '同安区', label: '同安区' },
+    { value: '翔安区', label: '翔安区' }
   ],
   gradeCategories: [
     { 
@@ -37,8 +33,7 @@ const DEFAULT_CONFIGS = {
       subjects: ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
     }
   ],
-  teacherTypes: ['大学生', '机构老师', '专职老师', '在职老师', '不限'],
-  timeOptions: ['周一', '周二', '周三', '周四', '周五', '周六', '周日', '上午', '下午', '晚上', '寒暑假', '随时可约']
+  teacherTypes: ['大学生', '机构老师', '专职老师', '在职老师', '不限']
 };
 
 @Injectable()

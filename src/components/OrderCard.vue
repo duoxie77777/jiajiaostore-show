@@ -66,7 +66,7 @@
         </div>
         <div class="detail-content">
           <span class="detail-label">学校</span>
-          <span class="detail-value">{{ order.school }}</span>
+          <span class="detail-value">{{ order.school || '-' }}</span>
         </div>
       </div>
       
@@ -77,7 +77,7 @@
         </div>
         <div class="detail-content">
           <span class="detail-label">平时分数</span>
-          <span class="detail-value score">{{ order.score }}</span>
+          <span class="detail-value score">{{ order.score || '-' }}</span>
         </div>
       </div>
       
@@ -88,7 +88,7 @@
         </div>
         <div class="detail-content">
           <span class="detail-label">上课频率</span>
-          <span class="detail-value">{{ order.frequency }}</span>
+          <span class="detail-value">{{ order.frequency || '-' }}</span>
         </div>
       </div>
       
@@ -99,11 +99,17 @@
         </div>
         <div class="detail-content">
           <span class="detail-label">可选时间</span>
-          <div class="time-tags">
-            <span v-for="time in order.availableTimes" :key="time" class="time-tag">
+          <div class="time-tags" v-if="order.availableTimesText || (order.availableTimes && order.availableTimes.length > 0)">
+            <!-- 优先显示文本字段 -->
+            <span v-if="order.availableTimesText" class="time-text">
+              {{ order.availableTimesText }}
+            </span>
+            <!-- 兼容旧的数组字段 -->
+            <span v-else v-for="time in order.availableTimes" :key="time" class="time-tag">
               {{ time }}
             </span>
           </div>
+          <span v-else class="time-text">-</span>
         </div>
       </div>
       
@@ -114,7 +120,7 @@
         </div>
         <div class="detail-content">
           <span class="detail-label">到手价</span>
-          <span class="detail-value">{{ order.price }}</span>
+          <span class="detail-value">{{ order.price || '-' }}</span>
         </div>
       </div>
       
@@ -125,7 +131,7 @@
         </div>
         <div class="detail-content">
           <span class="detail-label">教师要求</span>
-          <span class="detail-value teacher-type">{{ order.teacherType }}</span>
+          <span class="detail-value teacher-type">{{ order.teacherType || '-' }}</span>
         </div>
       </div>
     </div>
@@ -215,6 +221,9 @@ function handleOpenMap() {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   animation: fadeIn 0.4s ease forwards;
   opacity: 0;
+  width: calc(100% - 10px);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @keyframes fadeIn {
@@ -427,6 +436,12 @@ function handleOpenMap() {
   color: #2563eb;
   border-radius: 10px;
   font-size: 11px;
+}
+
+.time-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
 }
 
 .order-note {

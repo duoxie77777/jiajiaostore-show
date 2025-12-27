@@ -1,10 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { mockOrders } from '../data/mockData'
+
+// API基础地址
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://jiajiaostore.top:8889/api'
 
 export const useOrderStore = defineStore('order', () => {
   // 所有订单
-  const orders = ref([...mockOrders])
+  const orders = ref([])
+  
+  // 加载状态
+  const loading = ref(false)
+  const loaded = ref(false)
   
   // 筛选条件
   const filters = ref({
@@ -20,10 +26,177 @@ export const useOrderStore = defineStore('order', () => {
   
   // 当前位置
   const currentLocation = ref({
-    city: '深圳市',
+    city: '厦门市',
     district: '',
     address: '正在定位...'
   })
+  
+  // 从后端加载订单（前台）
+  async function loadOrders() {
+    if (loaded.value && orders.value.length > 0) return
+    
+    loading.value = true
+    try {
+      const res = await fetch(`${API_BASE}/orders`)
+      if (res.ok) {
+        const data = await res.json()
+        orders.value = data.list || []
+        loaded.value = true
+        console.log('✅ 订单已从服务器加载')
+      }
+    } catch (e) {
+      console.error('⚠️ 无法连接服务器:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 从后端加载订单（后台管理）
+  async function loadAdminOrders() {
+    loading.value = true
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (!token) {
+        console.warn('未登录')
+        return
+      }
+      
+      const res = await fetch(`${API_BASE}/orders/admin`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        orders.value = data.list || []
+        loaded.value = true
+        console.log('✅ 订单已从服务器加载（管理员）')
+      }
+    } catch (e) {
+      console.error('⚠️ 无法连接服务器:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 创建订单
+  async function createOrder(orderData) {
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (!token) return { success: false, message: '未登录' }
+      
+      const res = await fetch(`${API_BASE}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(orderData)
+      })
+      
+      if (res.ok) {
+        const newOrder = await res.json()
+        orders.value.unshift(newOrder)
+        return { success: true, data: newOrder }
+      } else {
+        const error = await res.json()
+        return { success: false, message: error.message || '创建失败' }
+      }
+    } catch (e) {
+      console.error('创建订单失败:', e)
+      return { success: false, message: '网络错误' }
+    }
+  }
+  
+  // 更新订单
+  async function updateOrder(id, orderData) {
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (!token) return { success: false, message: '未登录' }
+      
+      const res = await fetch(`${API_BASE}/orders/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(orderData)
+      })
+      
+      if (res.ok) {
+        const updatedOrder = await res.json()
+        const index = orders.value.findIndex(o => o.id === id)
+        if (index > -1) {
+          orders.value[index] = updatedOrder
+        }
+        return { success: true, data: updatedOrder }
+      } else {
+        const error = await res.json()
+        return { success: false, message: error.message || '更新失败' }
+      }
+    } catch (e) {
+      console.error('更新订单失败:', e)
+      return { success: false, message: '网络错误' }
+    }
+  }
+  
+  // 切换订单状态
+  async function toggleOrderStatus(id) {
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (!token) return { success: false, message: '未登录' }
+      
+      const res = await fetch(`${API_BASE}/orders/${id}/toggle`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (res.ok) {
+        const updatedOrder = await res.json()
+        const index = orders.value.findIndex(o => o.id === id)
+        if (index > -1) {
+          orders.value[index] = updatedOrder
+        }
+        return { success: true, data: updatedOrder }
+      } else {
+        return { success: false, message: '切换失败' }
+      }
+    } catch (e) {
+      console.error('切换状态失败:', e)
+      return { success: false, message: '网络错误' }
+    }
+  }
+  
+  // 删除订单
+  async function deleteOrder(id) {
+    try {
+      const token = localStorage.getItem('admin_token')
+      if (!token) return { success: false, message: '未登录' }
+      
+      const res = await fetch(`${API_BASE}/orders/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (res.ok) {
+        const index = orders.value.findIndex(o => o.id === id)
+        if (index > -1) {
+          orders.value.splice(index, 1)
+        }
+        return { success: true }
+      } else {
+        return { success: false, message: '删除失败' }
+      }
+    } catch (e) {
+      console.error('删除订单失败:', e)
+      return { success: false, message: '网络错误' }
+    }
+  }
   
   // 筛选后的订单
   const filteredOrders = computed(() => {
@@ -74,7 +247,7 @@ export const useOrderStore = defineStore('order', () => {
     // 科目筛选
     if (filters.value.subject) {
       result = result.filter(order => 
-        order.subjects.includes(filters.value.subject)
+        order.subjects && order.subjects.includes(filters.value.subject)
       )
     }
     
@@ -113,9 +286,19 @@ export const useOrderStore = defineStore('order', () => {
   
   return {
     orders,
+    loading,
+    loaded,
     filters,
     currentLocation,
     filteredOrders,
+    // API方法
+    loadOrders,
+    loadAdminOrders,
+    createOrder,
+    updateOrder,
+    toggleOrderStatus,
+    deleteOrder,
+    // 工具方法
     setFilter,
     resetFilters,
     updateLocation,

@@ -108,6 +108,8 @@ function scrollToTop() {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
+  // 加载订单数据
+  orderStore.loadOrders()
 })
 
 onUnmounted(() => {
@@ -153,16 +155,15 @@ function goToPage(page) {
 }
 
 // 下拉刷新
-function onRefresh() {
-  setTimeout(() => {
-    refreshing.value = false
-    currentPage.value = 1
-    showToast({
-      message: '刷新成功',
-      type: 'success',
-      duration: 1000
-    })
-  }, 1000)
+async function onRefresh() {
+  await orderStore.loadOrders()
+  refreshing.value = false
+  currentPage.value = 1
+  showToast({
+    message: '刷新成功',
+    type: 'success',
+    duration: 1000
+  })
 }
 
 // 重置筛选
@@ -180,10 +181,15 @@ watch(() => orderStore.filters, () => {
 .home-page {
   min-height: 100vh;
   background: #f5f7fa;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .order-list {
   padding-bottom: 20px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .list-header {

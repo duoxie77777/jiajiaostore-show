@@ -35,6 +35,9 @@ export class Order {
   @Column('simple-array', { nullable: true })
   availableTimes: string[];
 
+  @Column({ length: 200, nullable: true })
+  availableTimesText: string;
+
   @Column({ length: 100, nullable: true })
   price: string;
 

@@ -18,6 +18,8 @@
   color: #fff;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .location-header::before {

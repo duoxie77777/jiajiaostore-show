@@ -26,12 +26,12 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
     const adminStore = useAdminStore()
     // 先检查登录状态
     if (!adminStore.isLoggedIn) {
-      adminStore.checkAuth()
+      await adminStore.checkAuth()
     }
     // 再次检查
     if (!adminStore.isLoggedIn) {
